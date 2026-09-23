@@ -1,0 +1,14 @@
+# 依赖与构建产物必须在镜像内干净生成，不能带入本地结果（保证每个人打包一致）
+node_modules
+dist
+node_modules/.release-pipeline
+
+# 本地个人设置，不进入镜像
+.release-pipeline.json
+
+# 日志与杂项
+*.log
+npm-debug.log*
+.DS_Store
+.git
+.gitignore

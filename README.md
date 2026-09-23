@@ -61,6 +61,43 @@ npm run dev
 
 访问 http://localhost:8081
 
+## 上线前检查（依赖安装 → 类型检查 → 打包校验）
+
+本地改完代码后，执行一条命令把三个环节串成流水线，避免类型报错、样式编译失败到最后一刻才发现：
+
+```bash
+cd frontend-user
+npm run release
+```
+
+- 在交互终端中会打开**设置面板**，三个环节的开关集中在一栏里，可逐项开关：
+  - `1. 安装依赖` — `npm install`，同步依赖
+  - `2. 类型检查` — `vue-tsc --noEmit`，拦截 TS / `.vue` 类型错误
+  - `3. 打包校验` — `vite build`（含 SCSS 编译），成功后原子替换 `dist/`
+- 开关**按当前环境自动给默认值**，并**自动记住上次的选择**（保存在本地
+  `frontend-user/.release-pipeline.json`，已 gitignore，不影响他人）：
+  - 本地（local）：三步默认全开
+  - Docker 构建（`RELEASE_ENV=docker`）：已在镜像分层中装好依赖，默认跳过安装
+  - CI：默认跳过安装（依赖由流水线预置）
+- 按 `e` 可在面板中临时切换环境查看/调整对应开关；`↑↓` 移动、空格/数字键切换、`r` 执行。
+- 任何一步不通过都会指出**卡在第几步和原因**，完整输出同时落盘到
+  `node_modules/.release-pipeline/logs/`；打包失败会删除半成品临时目录、保留上次成功的
+  `dist/`，修复后重跑 `npm run release` 即可，不残留失败中间产物。
+
+常用参数：
+
+```bash
+npm run release -- --settings      # 强制打开设置面板（即使之前选了“不再显示”）
+npm run release -- -y              # 非交互执行（Docker 构建使用，按默认/记忆的开关跑）
+npm run release -- --env docker    # 临时指定环境：local | docker | ci
+npm run release -- --no-install    # 本次跳过某环节（不修改记忆）
+npm run release -- --typecheck-only
+npm run release -- --force-install # 删除 node_modules 后重装
+```
+
+原有的 `npm run dev` 本地启动与 `docker-compose up --build -d` 部署方式保持不变；
+Docker 镜像构建内部已改为走同一条流水线（类型检查不通过则镜像构建失败）。
+
 ## PDF 示例文件
 
 将 PDF 文件放入 `frontend-user/public/` 目录，然后在页面中点击对应按钮加载：

@@ -8,6 +8,9 @@ dist/
 dist-ssr/
 *.local
 
+# 上线流水线的本地设置（个人开关状态，不随仓库分发）
+.release-pipeline.json
+
 # Editor
 .vscode/*
 !.vscode/extensions.json
