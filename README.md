@@ -21,6 +21,9 @@
 │   ├── Dockerfile              # 前端 Docker 构建文件
 │   ├── nginx.conf              # Nginx 部署配置
 │   ├── package.json            # 前端依赖与脚本
+│   ├── pipeline.config.json    # 发布流水线集中设置（各环节开关/命令/默认值）
+│   ├── scripts/
+│   │   └── pipeline.mjs        # 发布流水线编排：安装依赖→类型检查→打包校验
 │   ├── vite.config.ts          # Vite 构建配置
 │   ├── tsconfig.json           # TypeScript 配置
 │   ├── index.html              # 入口 HTML
@@ -60,6 +63,43 @@ npm run dev
 ```
 
 访问 http://localhost:8081
+
+## 发布流水线（打包前校验）
+
+打包上线前统一走一条流水线，把**安装依赖 → 类型检查 → 打包校验**串起来，避免类型报错、样式编译失败等到最后一刻才发现，也避免不同机器装出的依赖不一致：
+
+| 环节 | 内容 | 说明 |
+|------|------|------|
+| 安装依赖 | `npm ci` | 严格按 package-lock.json 干净安装，可复现；会清掉不一致的 node_modules |
+| 类型检查 | `vue-tsc --noEmit` | TypeScript + Vue SFC 类型检查，不过则中断 |
+| 打包校验 | `vite build` | 生产打包，同时覆盖 SCSS 样式编译；构建前自动清空 dist |
+
+```bash
+cd frontend-user
+npm run pipeline
+```
+
+特性：
+
+- **一栏设置**：三个环节的命令、默认开关、失败提示全部收在 `frontend-user/pipeline.config.json`，无需改脚本。
+- **按环境自动决定跑哪些**：自动识别 `local`（本地）/ `docker`（镜像构建）/ `ci`（持续集成）。本地与 CI 默认三步全跑；Docker 镜像内依赖在独立层安装，默认跑「类型检查 + 打包校验」。
+- **记住上次选择**：通过命令行逐项开关后，选择记录在 `frontend-user/.pipeline/state.json`（已被 git 忽略，不入库），下次自动沿用；`--reset-settings` 可恢复默认。
+- **逐项开关**：`--install / --no-install`、`--typecheck / --no-typecheck`、`--build / --no-build`。
+- **失败可定位、可重试**：任一环节不通过立即停止，终端明确显示卡在第几步、退出码与排查方向，完整输出写入 `.pipeline/last-run.log`；失败环节及未执行的后续环节的产物会被自动清理，修复后重新 `npm run pipeline` 即可，不会残留上次的半成品。
+- **原有用法不变**：`npm run dev`、`npm run build` 以及 `docker-compose up --build` 保持原样；Docker 构建内部自动经过同一条流水线（Dockerfile 改用 `npm ci` 保证镜像内依赖可复现）。
+
+常用示例：
+
+```bash
+npm run pipeline                              # 按当前环境默认 + 记住的选择执行
+npm run pipeline -- --no-install              # 本次跳过依赖安装（选择会被记住）
+npm run pipeline -- --env ci                  # 模拟 CI 环境的默认开关
+npm run pipeline -- --reset-settings          # 清除记住的选择，恢复环境默认
+npm run pipeline -- --help                    # 查看全部选项
+```
+
+> 注：`.pipeline/` 为本地状态与日志目录，不入库、不影响他人；配置文件 `pipeline.config.json` 随仓库共享。
+
 
 ## PDF 示例文件
 

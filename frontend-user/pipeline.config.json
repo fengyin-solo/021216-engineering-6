@@ -1,0 +1,35 @@
+{
+  "environments": ["local", "docker", "ci"],
+  "steps": [
+    {
+      "id": "install",
+      "name": "安装依赖",
+      "description": "按 package-lock.json 干净安装依赖（npm ci），保证不同机器装出的依赖一致",
+      "command": "npm",
+      "args": ["ci"],
+      "defaults": { "local": true, "docker": false, "ci": true },
+      "artifacts": [],
+      "failureHint": "依赖安装失败，通常是网络 / registry 问题，或 package-lock.json 与 package.json 不一致（可先本地执行 npm install 同步 lockfile）"
+    },
+    {
+      "id": "typecheck",
+      "name": "类型检查",
+      "description": "TypeScript + Vue SFC 类型检查（vue-tsc --noEmit）",
+      "command": "npx",
+      "args": ["vue-tsc", "--noEmit", "-p", "tsconfig.json"],
+      "defaults": { "local": true, "docker": true, "ci": true },
+      "artifacts": [],
+      "failureHint": "存在类型错误，按上方输出的文件路径与行号定位并修复"
+    },
+    {
+      "id": "build",
+      "name": "打包校验",
+      "description": "生产环境打包（vite build），同时覆盖样式编译校验",
+      "command": "npx",
+      "args": ["vite", "build"],
+      "defaults": { "local": true, "docker": true, "ci": true },
+      "artifacts": ["dist"],
+      "failureHint": "打包失败，常见为 SCSS 样式编译错误、模块找不到或语法错误，按上方输出定位"
+    }
+  ]
+}
